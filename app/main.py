@@ -1,15 +1,12 @@
 # -*- coding: utf-8 -*-
+import pathlib
 import re
 
 import requests
-from flask import Flask, Response, redirect, request
-from requests.exceptions import (
-    ChunkedEncodingError,
-    ContentDecodingError, ConnectionError, StreamConsumedError)
-from requests.utils import (
-    stream_decode_response_unicode, iter_slices, CaseInsensitiveDict)
-from urllib3.exceptions import (
-    DecodeError, ReadTimeoutError, ProtocolError)
+from flask import Flask, Response, redirect, request, send_file
+from requests.exceptions import (ChunkedEncodingError, ContentDecodingError, ConnectionError, StreamConsumedError)
+from requests.utils import (stream_decode_response_unicode, iter_slices, CaseInsensitiveDict)
+from urllib3.exceptions import (DecodeError, ReadTimeoutError, ProtocolError)
 
 # config
 # 分支文件使用jsDelivr镜像的开关，0为关闭，默认关闭
@@ -31,13 +28,16 @@ black_list = '''
 pass_list = '''
 '''
 
+BASE_DIR = pathlib.Path(__file__).parent
+FILES_DIR = BASE_DIR / 'files'
 HOST = '127.0.0.1'  # 监听地址，建议监听本地然后由web服务器反代
-PORT = 80  # 监听端口
+PORT = 8080  # 监听端口
 ASSET_URL = 'https://hunshcn.github.io/gh-proxy'  # 主页
 
 white_list = [tuple([x.replace(' ', '') for x in i.split('/')]) for i in white_list.split('\n') if i]
 black_list = [tuple([x.replace(' ', '') for x in i.split('/')]) for i in black_list.split('\n') if i]
 pass_list = [tuple([x.replace(' ', '') for x in i.split('/')]) for i in pass_list.split('\n') if i]
+
 app = Flask(__name__)
 CHUNK_SIZE = 1024 * 10
 index_html = requests.get(ASSET_URL, timeout=10).text
@@ -136,7 +136,8 @@ def handler(u):
                 pass_by = True
                 break
     else:
-        return Response('Invalid input.', status=403)
+        return proxy(u,False,True)
+        # return Response('Invalid input.', status=403)
 
     if (jsdelivr or pass_by) and exp2.match(u):
         u = u.replace('/blob/', '@', 1).replace('github.com', 'cdn.jsdelivr.net/gh', 1)
@@ -157,7 +158,7 @@ def handler(u):
         return proxy(u)
 
 
-def proxy(u, allow_redirects=False):
+def proxy(u, allow_redirects=False, persistence=False):
     headers = {}
     r_headers = dict(request.headers)
     if 'Host' in r_headers:
@@ -166,7 +167,14 @@ def proxy(u, allow_redirects=False):
         url = u + request.url.replace(request.base_url, '', 1)
         if url.startswith('https:/') and not url.startswith('https://'):
             url = 'https://' + url[7:]
-        r = requests.request(method=request.method, url=url, data=request.data, headers=r_headers, stream=True, allow_redirects=allow_redirects)
+        r = requests.request(
+            method=request.method,
+            url=url,
+            data=request.data,
+            headers=r_headers,
+            stream=True,
+            allow_redirects=allow_redirects
+        )
         headers = dict(r.headers)
 
         if 'Content-length' in r.headers and int(r.headers['Content-length']) > size_limit:
@@ -182,11 +190,20 @@ def proxy(u, allow_redirects=False):
                 headers['Location'] = '/' + _location
             else:
                 return proxy(_location, True)
-
-        return Response(generate(), headers=headers, status=r.status_code)
+        if persistence:
+            md5_string = hashlib.md5(url.encode('utf-8')).hexdigest()
+            filepath= FILES_DIR / md5_string
+            if not filepath.exists():
+                with open(filepath, 'wb') as f:
+                    for i in generate():
+                        f.write(i)
+            return send_file(filepath)
+        else:
+            return Response(generate(), headers=headers, status=r.status_code)
     except Exception as e:
         headers['content-type'] = 'text/html; charset=UTF-8'
         return Response('server error ' + str(e), status=500, headers=headers)
+
 
 app.debug = True
 if __name__ == '__main__':
