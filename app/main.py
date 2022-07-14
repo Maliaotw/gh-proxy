@@ -200,9 +200,9 @@ def proxy(u, allow_redirects=False, persistence=False):
             return redirect(u + request.url.replace(request.base_url, '', 1))
 
         def generate():
-            app.logger.info(r)
+            # app.logger.info(r)
             for chunk in iter_content(r, chunk_size=CHUNK_SIZE):
-                app.logger.info(chunk)
+                # app.logger.info(chunk)
                 yield chunk
 
         if 'Location' in r.headers:
