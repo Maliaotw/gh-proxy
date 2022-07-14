@@ -1,12 +1,15 @@
 # -*- coding: utf-8 -*-
+import hashlib
+import logging
 import pathlib
 import re
 
 import requests
 from flask import Flask, Response, redirect, request, send_file
-from requests.exceptions import (ChunkedEncodingError, ContentDecodingError, ConnectionError, StreamConsumedError)
-from requests.utils import (stream_decode_response_unicode, iter_slices, CaseInsensitiveDict)
-from urllib3.exceptions import (DecodeError, ReadTimeoutError, ProtocolError)
+from flask.logging import default_handler
+from requests.exceptions import ChunkedEncodingError, ContentDecodingError, ConnectionError, StreamConsumedError
+from requests.utils import stream_decode_response_unicode, iter_slices, CaseInsensitiveDict
+from urllib3.exceptions import DecodeError, ReadTimeoutError, ProtocolError
 
 # config
 # 分支文件使用jsDelivr镜像的开关，0为关闭，默认关闭
@@ -39,6 +42,20 @@ black_list = [tuple([x.replace(' ', '') for x in i.split('/')]) for i in black_l
 pass_list = [tuple([x.replace(' ', '') for x in i.split('/')]) for i in pass_list.split('\n') if i]
 
 app = Flask(__name__)
+formatter = logging.Formatter(  # pylint: disable=invalid-name
+    '%(asctime)s %(levelname)s %(process)d ---- %(threadName)s  '
+    '%(module)s : %(funcName)s {%(pathname)s:%(lineno)d} %(message)s','%Y-%m-%dT%H:%M:%SZ')
+
+handler = logging.StreamHandler()
+handler.setFormatter(formatter)
+
+app.logger.setLevel(logging.INFO)
+app.logger.addHandler(handler)
+app.logger.removeHandler(default_handler)
+
+app.logger.info(f'FILES_DIR {FILES_DIR}')
+
+
 CHUNK_SIZE = 1024 * 10
 index_html = requests.get(ASSET_URL, timeout=10).text
 icon_r = requests.get(ASSET_URL + '/favicon.ico', timeout=10).content
@@ -115,6 +132,7 @@ def check_url(u):
 
 @app.route('/<path:u>', methods=['GET', 'POST'])
 def handler(u):
+    # app.logger.info('handler')
     u = u if u.startswith('http') else 'https://' + u
     if u.rfind('://', 3, 9) == -1:
         u = u.replace('s:/', 's://', 1)  # uwsgi会将//传递为/
@@ -136,7 +154,8 @@ def handler(u):
                 pass_by = True
                 break
     else:
-        return proxy(u,False,True)
+        app.logger.info('proxy file')
+        return proxy(u, False, True)
         # return Response('Invalid input.', status=403)
 
     if (jsdelivr or pass_by) and exp2.match(u):
@@ -181,7 +200,9 @@ def proxy(u, allow_redirects=False, persistence=False):
             return redirect(u + request.url.replace(request.base_url, '', 1))
 
         def generate():
+            app.logger.info(r)
             for chunk in iter_content(r, chunk_size=CHUNK_SIZE):
+                app.logger.info(chunk)
                 yield chunk
 
         if 'Location' in r.headers:
@@ -199,6 +220,9 @@ def proxy(u, allow_redirects=False, persistence=False):
                         f.write(i)
             return send_file(filepath)
         else:
+            # app.logger.info('generate'*8)
+            if 'Transfer-Encoding' in headers:
+                headers.pop('Transfer-Encoding')
             return Response(generate(), headers=headers, status=r.status_code)
     except Exception as e:
         headers['content-type'] = 'text/html; charset=UTF-8'
