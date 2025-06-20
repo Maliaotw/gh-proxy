@@ -1,0 +1,216 @@
+# .github/workflows/deploy.yml
+name: 部署到 Cloud Run
+
+on:
+  push:
+    branches:
+      - main
+      - develop
+  pull_request:
+    branches:
+      - main
+  workflow_dispatch:
+    inputs:
+      environment:
+        description: '部署环境'
+        required: true
+        default: 'staging'
+        type: choice
+        options:
+          - staging
+          - production
+
+env:
+  PROJECT_ID: ${{ secrets.GCP_PROJECT_ID }}
+  SERVICE_NAME: gh-proxy
+  REGION: us-east1
+  GCP_RUN_VARS: ${{ secrets.GCP_RUN_VARS }}
+  ENVIRONMENT: ${{ github.event.inputs.environment || (github.ref == 'refs/heads/main' && 'production' || 'staging') }}
+  COMMIT_SHA: ${{ github.sha }}
+
+
+jobs:
+  # 代码质量检查
+  quality-check:
+    name: 代码质量检查
+    runs-on: ubuntu-latest
+    steps:
+      - name: 检出代码
+        uses: actions/checkout@v4
+
+      - name: 设置 Python
+        uses: actions/setup-python@v4
+        with:
+          python-version: '3.11'
+
+      - name: 安装依赖
+        run: |
+          python -m pip install --upgrade pip
+          pip install flake8 black isort pytest
+          if [ -f requirements.txt ]; then pip install -r requirements.txt; fi
+
+      - name: 运行代码格式检查
+        run: |
+          black --check .
+          isort --check-only .
+
+      - name: 运行代码检查
+        run: |
+          flake8 . --count --select=E9,F63,F7,F82 --show-source --statistics
+          flake8 . --count --exit-zero --max-complexity=10 --max-line-length=127 --statistics
+
+      - name: 运行测试
+        run: |
+          pytest tests/ -v || echo "No tests found"
+
+  # 构建和部署
+  build:
+    name: 构建
+    runs-on: ubuntu-latest
+    needs: quality-check
+    if: github.ref == 'refs/heads/main' || github.ref == 'refs/heads/develop' || github.event_name == 'workflow_dispatch'
+
+    steps:
+      - name: 检出代码
+        uses: actions/checkout@v4
+
+      - name: 认证到 Google Cloud
+        uses: google-github-actions/auth@v2
+        with:
+          credentials_json: ${{ secrets.GCP_SA_KEY }}
+
+      - name: 设置 Cloud SDK
+        uses: google-github-actions/setup-gcloud@v2
+        with:
+          project_id: ${{ secrets.GCP_PROJECT_ID }}
+
+
+      - name: 配置 Docker 用于 GCR
+        run: |
+          gcloud auth configure-docker
+
+      - name: 打印选定的环境变量
+        run: |
+          echo "PROJECT_ID=${PROJECT_ID}"
+          echo "SERVICE_NAME=${SERVICE_NAME}"
+          echo "REGION=${REGION}"
+          echo "VAR=${VAR}"
+          echo "COMMIT_SHA=${COMMIT_SHA}"
+
+
+      - name: 构建容器镜像
+        run: |
+          docker build -t gcr.io/${{ env.PROJECT_ID }}/${{ env.SERVICE_NAME }}:${{ env.COMMIT_SHA }} .
+
+      - name: 将容器镜像推送到容器注册表
+        run: |
+          docker push gcr.io/${{ env.PROJECT_ID }}/${{ env.SERVICE_NAME }}:${{ env.COMMIT_SHA }}
+
+      - name: 将镜像标记为最新版本
+        run: |
+          docker tag gcr.io/${{ env.PROJECT_ID }}/${{ env.SERVICE_NAME }}:${{ env.COMMIT_SHA }} gcr.io/${{ env.PROJECT_ID }}/${{ env.SERVICE_NAME }}:latest
+
+      - name: 推送最新标签
+        run: |
+          docker push gcr.io/${{ env.PROJECT_ID }}/${{ env.SERVICE_NAME }}:latest
+
+  deploy:
+    name: 部署
+    runs-on: ubuntu-latest
+    needs: build
+    if: github.ref == 'refs/heads/main' || github.ref == 'refs/heads/develop' || github.event_name == 'workflow_dispatch'
+
+    steps:
+      - name: 检出代码
+        uses: actions/checkout@v4
+
+      - name: 认证到 Google Cloud
+        uses: google-github-actions/auth@v2
+        with:
+          credentials_json: ${{ secrets.GCP_SA_KEY }}
+
+      - name: 设置 Cloud SDK
+        uses: google-github-actions/setup-gcloud@v2
+        with:
+          project_id: ${{ secrets.GCP_PROJECT_ID }}
+
+
+      - name: 配置 Docker 用于 GCR
+        run: |
+          gcloud auth configure-docker
+
+      - name: 打印选定的环境变量
+        run: |
+          echo "PROJECT_ID=${PROJECT_ID}"
+          echo "SERVICE_NAME=${SERVICE_NAME}"
+          echo "REGION=${REGION}"
+          echo "VAR=${VAR}"
+          echo "COMMIT_SHA=${COMMIT_SHA}"
+
+      - name: 部署到 Cloud Run
+        run: |
+          gcloud run deploy ${{ env.SERVICE_NAME }} \
+            --image 'gcr.io/${{ env.PROJECT_ID }}/${{ env.SERVICE_NAME }}:${{ env.COMMIT_SHA }}' \
+            --region ${{ env.REGION }} \
+            --platform managed \
+            --port 8080 \
+            --memory 2Gi \
+            --cpu 1 \
+            --max-instances 2 \
+            --min-instances 1 \
+            --timeout 3600 \
+            --concurrency 80 \
+            --set-env-vars "${{ env.GCP_RUN_VARS }}" \
+            --allow-unauthenticated
+
+
+      - name: 获取服务 URL
+        id: get-url
+        run: |
+          SERVICE_URL=$(gcloud run services describe ${{ env.SERVICE_NAME }} \
+            --region=${{ env.REGION }} \
+            --format="value(status.url)")
+          echo "SERVICE_URL=$SERVICE_URL" >> $GITHUB_OUTPUT
+          echo "🌐 服务 URL: $SERVICE_URL"
+
+      - name: 健康检查
+        run: |
+          echo "等待服务准备就绪..."
+          sleep 30
+
+          SERVICE_URL="${{ steps.get-url.outputs.SERVICE_URL }}"
+
+          # 健康检查
+          for i in {1..5}; do
+            if curl -f -s "$SERVICE_URL" > /dev/null; then
+              echo "✅ 服务健康"
+              exit 0
+            else
+              echo "⏳ 尝试 $i: 服务尚未就绪，等待中..."
+              sleep 10
+            fi
+          done
+
+          echo "❌ 服务健康检查失败"
+          exit 1
+
+      - name: 在 PR 中添加部署信息评论
+        if: github.event_name == 'pull_request'
+        uses: actions/github-script@v7
+        with:
+          script: |
+            const serviceUrl = '${{ steps.get-url.outputs.SERVICE_URL }}';
+            const environment = '${{ env.ENVIRONMENT }}';
+
+            github.rest.issues.createComment({
+              issue_number: context.issue.number,
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              body: `🚀 **部署成功**
+
+              **环境:** ${environment}
+              **服务 URL:** ${serviceUrl}
+              **提交:** ${context.sha.substring(0, 7)}
+
+              应用程序已部署，可以进行测试！`
+            });

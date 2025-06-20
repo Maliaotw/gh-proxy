@@ -1,118 +1,192 @@
-# gh-proxy
+# 通用文件加速代理 (gh-proxy)
 
-## 简介
+一个使用 FastAPI 和 httpx 构建的高性能代理服务，用于加速各种网络资源的下载，特别适合 GitHub 等访问受限的网站。
 
-github release、archive以及项目文件的加速项目，支持clone，有Cloudflare Workers无服务器版本以及Python版本
+## 📋 项目概述
 
-## 演示
+本项目借鉴了 [gh-proxy](https://github.com/hunshcn/gh-proxy)，将原本基于 Flask 的实现改造为使用 FastAPI 框架，并扩展了其功能，使其成为一个通用的文件加速代理。
 
-[https://gh.api.99988866.xyz/](https://gh.api.99988866.xyz/)
+通用文件加速代理是一项旨在解决网络资源访问缓慢或受限问题的服务。它不仅适用于 GitHub，还可用于加速其他各种网站的资源下载。该服务提供：
 
-演示站为公共服务，如有大规模使用需求请自行部署，演示站有点不堪重负
+- 高性能的通用代理，支持各类网站资源的加速下载
+- 智能文件缓存系统，显著提高重复请求的响应速度
+- 完整支持 Git 操作，包括克隆、拉取等（自动转换为 ZIP 文件下载）
+- 简洁易用的网页界面和灵活的命令行调用方式
 
-![imagea272c95887343279.png](https://img.maocdn.cn/img/2021/04/24/imagea272c95887343279.png)
+## 🛠️ 技术栈
 
-当然也欢迎[捐赠](#捐赠)以支持作者
+- **FastAPI**：用于构建 API 的现代、快速的 Web 框架
+- **httpx**：用于发送代理请求的异步 HTTP 客户端
+- **uvicorn**：用于运行 FastAPI 应用程序的 ASGI 服务器
+- **Docker**：用于容器化和简化部署
+- **GitHub Actions**：用于 CI/CD 和部署到 Google Cloud Run
 
-## python版本和cf worker版本差异
+## 🚀 安装和设置
 
-- python版本支持进行文件大小限制，超过设定返回原地址 [issue #8](https://github.com/hunshcn/gh-proxy/issues/8)
+### 前提条件
 
-- python版本支持特定user/repo 封禁/白名单 以及passby [issue #41](https://github.com/hunshcn/gh-proxy/issues/41)
+- Python 3.11 或更高版本
+- [uv](https://github.com/astral-sh/uv)（推荐）或 pip
 
-## 使用
+### 使用 uv 安装（推荐）
 
-直接在copy出来的url前加`https://gh.api.99988866.xyz/`即可
+1. 如果尚未安装 uv，请先安装：
+   ```bash
+   pip install uv
+   ```
 
-也可以直接访问，在input输入
+2. 克隆仓库：
+   ```bash
+   git clone https://github.com/yourusername/gh-proxy.git
+   cd gh-proxy
+   ```
 
-***大量使用请自行部署，以上域名仅为演示使用。***
+3. 创建虚拟环境并安装依赖：
+   ```bash
+   uv venv
+   uv sync
+   ```
 
-访问私有仓库可以通过
+### 使用 pip 安装
 
-`git clone https://user:TOKEN@ghproxy.com/https://github.com/xxxx/xxxx` [#71](https://github.com/hunshcn/gh-proxy/issues/71)
+1. 克隆仓库：
+   ```bash
+   git clone https://github.com/yourusername/gh-proxy.git
+   cd gh-proxy
+   ```
 
-以下都是合法输入（仅示例，文件不存在）：
+2. 创建虚拟环境并安装依赖：
+   ```bash
+   python -m venv venv
+   source venv/bin/activate  # 在 Windows 上：venv\Scripts\activate
+   pip install -r requirements.txt
+   ```
 
-- 分支源码：https://github.com/hunshcn/project/archive/master.zip
+## ⚙️ 配置
 
-- release源码：https://github.com/hunshcn/project/archive/v0.1.0.tar.gz
+应用程序可以使用环境变量或 `.env` 文件进行配置。
 
-- release文件：https://github.com/hunshcn/project/releases/download/v0.1.0/example.zip
+### 环境变量
 
-- 分支文件：https://github.com/hunshcn/project/blob/master/filename
+- `PROXY_HOST`：服务器绑定的主机（默认：127.0.0.1）
+- `PROXY_PORT`：服务器绑定的端口（默认：8080）
 
-- commit文件：https://github.com/hunshcn/project/blob/1111111111111111111111111111/filename
+### .env 文件
 
-- gist：https://gist.githubusercontent.com/cielpy/351557e6e465c12986419ac5a4dd2568/raw/cmd.py
-
-## cf worker版本部署
-
-首页：https://workers.cloudflare.com
-
-注册，登陆，`Start building`，取一个子域名，`Create a Worker`。
-
-复制 [index.js](https://cdn.jsdelivr.net/gh/hunshcn/gh-proxy@master/index.js)  到左侧代码框，`Save and deploy`。如果正常，右侧应显示首页。
-
-`ASSET_URL`是静态资源的url（实际上就是现在显示出来的那个输入框单页面）
-
-`PREFIX`是前缀，默认（根路径情况为"/"），如果自定义路由为example.com/gh/*，请将PREFIX改为 '/gh/'，注意，少一个杠都会错！
-
-## Python版本部署
-
-### Docker部署
+在项目根目录创建一个包含以下内容的 `.env` 文件：
 
 ```
-docker run -d --name="gh-proxy-py" \
-  -p 0.0.0.0:80:80 \
-  --restart=always \
-  hunsh/gh-proxy-py:latest
+PROXY_HOST=0.0.0.0
+PROXY_PORT=8080
 ```
 
-第一个80是你要暴露出去的端口
+## 🏃‍♂️ 运行应用程序
 
-### 直接部署
+### 本地开发
 
-安装依赖（请使用python3）
+1. 启动应用程序：
+   ```bash
+   cd app
+   python main.py
+   ```
 
-```pip install flask requests```
+   或直接使用 uvicorn：
+   ```bash
+   uvicorn app.main:app --host 127.0.0.1 --port 8080 --reload
+   ```
 
-按需求修改`app/main.py`的前几项配置
+2. 在 http://127.0.0.1:8080 访问 Web 界面
 
-*注意:* 可能需要在`return Response`前加两行
-```python3
-if 'Transfer-Encoding' in headers:
-    headers.pop('Transfer-Encoding')
+### Docker
+
+1. 使用 Docker 构建和运行：
+   ```bash
+   docker build -t gh-proxy .
+   docker run -p 8080:80 gh-proxy
+   ```
+
+2. 在 http://localhost:8080 访问 Web 界面
+
+### Docker Compose
+
+1. 使用 Docker Compose 运行：
+   ```bash
+   docker-compose up -d
+   ```
+
+2. 在 http://localhost:8080 访问 Web 界面
+
+## 🧪 测试
+
+项目包含测试以确保功能正常。使用以下命令运行测试：
+
+```bash
+pytest tests/ -v
 ```
 
-### 注意
+### 代码格式化和检查
 
-python版本的机器如果无法正常访问github.io会启动报错，请自行修改静态文件url
+安装开发依赖并使用 black 和 isort 进行代码格式化：
 
-python版本默认走服务器（2021.3.27更新）
+```bash
+uv install --dev
+black .
+isort .
+```
 
-## Cloudflare Workers计费
+### 手动测试
 
-到 `overview` 页面可参看使用情况。免费版每天有 10 万次免费请求，并且有每分钟1000次请求的限制。
+您可以通过以下方式手动测试代理：
 
-如果不够用，可升级到 $5 的高级版本，每月可用 1000 万次请求（超出部分 $0.5/百万次请求）。
+#### 通过 Web 界面测试
 
-## Changelog
+1. 启动应用程序
+2. 打开 Web 界面
+3. 输入 GitHub URL（例如，https://github.com/username/project/archive/master.zip）
+4. 点击"加速下载"
 
-* 2020.04.10 增加对`raw.githubusercontent.com`文件的支持
-* 2020.04.09 增加Python版本（使用Flask）
-* 2020.03.23 新增了clone的支持
-* 2020.03.22 初始版本
+#### 通过命令行测试
 
-## 链接
+假设代理服务运行在 `http://127.0.0.1:8080`，您可以使用以下命令测试：
 
-[我的博客](https://hunsh.net)
+##### 使用 Git 克隆
 
-## 参考
+```bash
+git clone http://127.0.0.1:8080/https://github.com/cookiecutter/cookiecutter-django.git
+```
 
-[jsproxy](https://github.com/EtherDream/jsproxy/)
+##### 使用 wget 下载
 
-## 捐赠
+```bash
+wget http://127.0.0.1:8080/https://github.com/twbs/bootstrap/releases/download/v5.3.7/bootstrap-5.3.7-examples.zip
+```
 
-![wx.png](https://img.maocdn.cn/img/2021/04/24/image.md.png)
-![ali.png](https://www.helloimg.com/images/2021/04/24/BK9vmb.md.png)
+##### 使用 curl 下载
+
+```bash
+curl -O http://127.0.0.1:8080/https://github.com/twbs/bootstrap/releases/download/v5.3.7/bootstrap-5.3.7-examples.zip
+```
+
+> **注意**：在上述命令中，代理 URL (`http://127.0.0.1:8080/`) 后面直接跟着目标 URL，无需额外参数。
+
+## 🚢 部署
+
+### Google Cloud Run
+
+项目包含用于自动部署到 Google Cloud Run 的 GitHub Actions 工作流。设置步骤：
+
+1. Fork 此仓库
+2. 在您的 GitHub 仓库中设置以下密钥：
+   - `GCP_PROJECT_ID`：您的 Google Cloud 项目 ID
+   - `GCP_SA_KEY`：您的 Google Cloud 服务账号密钥（JSON）
+   - `GCP_RUN_VARS`：Cloud Run 的环境变量（逗号分隔的 KEY=VALUE 对）
+
+3. 推送到主分支以触发部署
+
+## 📝 许可证
+
+本项目采用 MIT 许可证 - 详情请参阅 LICENSE 文件。
+
+## 🤝 贡献
+
+欢迎贡献！请随时提交 Pull Request。

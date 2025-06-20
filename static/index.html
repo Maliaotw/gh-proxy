@@ -1,0 +1,371 @@
+
+<!DOCTYPE html>
+<html lang="zh-TW">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>檔案加速代理</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Arial', sans-serif;
+            line-height: 1.6;
+            color: #333;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+        }
+
+        .container {
+            max-width: 1200px;
+            margin: 0 auto;
+            padding: 20px;
+        }
+
+        header {
+            text-align: center;
+            padding: 60px 0;
+            color: white;
+        }
+
+        header h1 {
+            font-size: 3rem;
+            margin-bottom: 10px;
+            text-shadow: 2px 2px 4px rgba(0,0,0,0.3);
+        }
+
+        header p {
+            font-size: 1.2rem;
+            margin-bottom: 30px;
+        }
+
+        .search-section {
+            background: white;
+            border-radius: 15px;
+            padding: 40px;
+            margin: 30px 0;
+            box-shadow: 0 10px 30px rgba(0,0,0,0.2);
+        }
+
+        .search-section h2 {
+            text-align: center;
+            margin-bottom: 20px;
+            color: #333;
+        }
+
+        .search-form {
+            display: flex;
+            flex-direction: column;
+            gap: 15px;
+            max-width: 600px;
+            margin: 0 auto;
+        }
+
+        .block.url {
+            padding: 15px;
+            border: 2px solid #ddd;
+            border-radius: 8px;
+            font-size: 16px;
+            transition: border-color 0.3s ease;
+        }
+
+        .block.url:focus {
+            outline: none;
+            border-color: #667eea;
+            box-shadow: 0 0 10px rgba(102, 126, 234, 0.3);
+        }
+
+        .submit-btn {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            padding: 15px 30px;
+            border: none;
+            border-radius: 8px;
+            font-size: 16px;
+            cursor: pointer;
+            transition: transform 0.3s ease;
+        }
+
+        .submit-btn:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 5px 15px rgba(0,0,0,0.2);
+        }
+
+        .tips-section {
+            background: #f8f9fa;
+            border-radius: 10px;
+            padding: 20px;
+            margin-top: 20px;
+            border-left: 4px solid #667eea;
+        }
+
+        .tips-section h3 {
+            color: #667eea;
+            margin-bottom: 10px;
+        }
+
+        .tips-section p {
+            margin-bottom: 8px;
+            color: #666;
+            font-size: 14px;
+        }
+
+        .examples {
+            background: #fff3cd;
+            border-radius: 10px;
+            padding: 20px;
+            margin-top: 15px;
+            border-left: 4px solid #ffc107;
+        }
+
+        .examples h4 {
+            color: #856404;
+            margin-bottom: 10px;
+        }
+
+        .examples p {
+            margin-bottom: 5px;
+            font-family: monospace;
+            font-size: 13px;
+            color: #6c757d;
+            word-break: break-all;
+        }
+
+        .about-section {
+            background: white;
+            border-radius: 15px;
+            padding: 40px;
+            margin: 30px 0;
+            box-shadow: 0 10px 30px rgba(0,0,0,0.2);
+        }
+
+        .skills {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+            gap: 20px;
+            margin-top: 30px;
+        }
+
+        .skill-card {
+            background: #f8f9fa;
+            padding: 20px;
+            border-radius: 10px;
+            text-align: center;
+            transition: transform 0.3s ease;
+        }
+
+        .skill-card:hover {
+            transform: translateY(-5px);
+            box-shadow: 0 5px 20px rgba(0,0,0,0.1);
+        }
+
+        footer {
+            text-align: center;
+            padding: 40px 0;
+            color: white;
+        }
+
+        .social-links {
+            margin-top: 20px;
+        }
+
+        .social-links a {
+            display: inline-block;
+            margin: 0 10px;
+            padding: 10px 20px;
+            background: rgba(255,255,255,0.2);
+            color: white;
+            text-decoration: none;
+            border-radius: 25px;
+            transition: background 0.3s ease;
+        }
+
+        .social-links a:hover {
+            background: rgba(255,255,255,0.3);
+        }
+
+        @media (max-width: 768px) {
+            header h1 {
+                font-size: 2rem;
+            }
+
+            .search-section, .about-section {
+                padding: 20px;
+                margin: 20px 0;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <header>
+            <h1>文件加速</h1>
+            <p>探索程式碼的世界，分享技術的魅力</p>
+        </header>
+
+        <section class="search-section">
+            <h2>🚀 檔案加速下載</h2>
+            <form class="search-form" action="./" method="get" target="_blank" onsubmit="toSubmit(event)">
+                <input class="block url" name="q" type="text" placeholder="輸入檔案連結" required>
+                <button type="submit" class="submit-btn">加速下載</button>
+            </form>
+
+             <div class="tips-section">
+                <h3>💡 使用說明</h3>
+                <p>• 專為解決檔案下載速度慢而設計的加速工具</p>
+                <p>• 支援多種檔案類型：原始碼、發布版本、單個檔案等</p>
+                <p>• 只需複製貼上檔案連結，即可獲得加速下載</p>
+                <p>• ⚠️ 限制：不支援整個專案資料夾的批量下載</p>
+            </div>
+
+
+            <div class="examples">
+                <h4>📝 輸入範例</h4>
+                <p>GitHub 分支原始碼：https://github.com/username/project/archive/master.zip</p>
+                <p>GitHub release 原始碼：https://github.com/username/project/archive/v0.1.0.tar.gz</p>
+                <p>GitHub release 檔案：https://github.com/username/project/releases/download/v0.1.0/example.zip</p>
+                <p>GitHub 分支檔案：https://github.com/username/project/blob/master/filename</p>
+                <p>其他網站檔案：https://example.com/path/to/file.zip</p>
+            </div>
+        </section>
+
+        <section class="about-section">
+            <h2>👨‍💻 關於我</h2>
+            <p>我是一名熱愛程式設計的開發者，專注於創建優雅且實用的解決方案。我相信好的程式碼不僅要能正常運作，更要具備可讀性和可維護性。</p>
+
+            <div class="skills">
+                <div class="skill-card">
+                    <h3>🐍 Python</h3>
+                    <p>後端開發、數據分析、機器學習</p>
+                </div>
+                <div class="skill-card">
+                    <h3>🌐 Web 開發</h3>
+                    <p>HTML, CSS, JavaScript, Flask</p>
+                </div>
+                <div class="skill-card">
+                    <h3>🛠️ 工具技能</h3>
+                    <p>Git, PyCharm, 虛擬環境管理</p>
+                </div>
+                <div class="skill-card">
+                    <h3>📚 持續學習</h3>
+                    <p>探索新技術，分享經驗心得</p>
+                </div>
+            </div>
+        </section>
+
+        <footer>
+            <p>&copy; 2025 我的個人首頁. 用 ❤️ 和 Python 製作</p>
+            <div class="social-links">
+                <a href="#" target="_blank">GitHub</a>
+                <a href="#" target="_blank">LinkedIn</a>
+                <a href="#" target="_blank">Blog</a>
+                <a href="mailto:your.email@example.com">Email</a>
+            </div>
+        </footer>
+    </div>
+
+    <script>
+        // 檔案加速提交處理
+        function toSubmit(e) {
+            e.preventDefault();
+            const inputUrl = document.getElementsByName('q')[0].value;
+
+            if (inputUrl) {
+                // 構建加速下載連結
+                const baseUrl = location.href.substr(0, location.href.lastIndexOf('/') + 1);
+                const acceleratedUrl = baseUrl + inputUrl;
+
+                // 在新視窗開啟加速連結
+                window.open(acceleratedUrl);
+
+                // 顯示提示訊息
+                showNotification('正在為您加速下載: ' + inputUrl);
+            }
+            return false;
+        }
+
+        // 顯示通知訊息
+        function showNotification(message) {
+            // 創建通知元素
+            const notification = document.createElement('div');
+            notification.style.cssText = `
+                position: fixed;
+                top: 20px;
+                right: 20px;
+                background: #4CAF50;
+                color: white;
+                padding: 15px 20px;
+                border-radius: 5px;
+                box-shadow: 0 4px 12px rgba(0,0,0,0.3);
+                z-index: 1000;
+                max-width: 300px;
+                word-wrap: break-word;
+                animation: slideIn 0.3s ease-out;
+            `;
+
+            // 添加動畫樣式
+            const style = document.createElement('style');
+            style.textContent = `
+                @keyframes slideIn {
+                    from { transform: translateX(100%); opacity: 0; }
+                    to { transform: translateX(0); opacity: 1; }
+                }
+                @keyframes slideOut {
+                    from { transform: translateX(0); opacity: 1; }
+                    to { transform: translateX(100%); opacity: 0; }
+                }
+            `;
+            document.head.appendChild(style);
+
+            notification.textContent = message;
+            document.body.appendChild(notification);
+
+            // 3秒後自動移除通知
+            setTimeout(() => {
+                notification.style.animation = 'slideOut 0.3s ease-in forwards';
+                setTimeout(() => {
+                    if (notification.parentNode) {
+                        notification.parentNode.removeChild(notification);
+                    }
+                }, 300);
+            }, 3000);
+        }
+
+        // 輸入框即時驗證
+        document.querySelector('input[name="q"]').addEventListener('input', function(e) {
+            const input = e.target;
+
+            if (input.value) {
+                input.style.borderColor = '#667eea';
+                input.title = '';
+            }
+        });
+
+        // 技能卡片互動效果
+        document.querySelectorAll('.skill-card').forEach(card => {
+            card.addEventListener('click', function() {
+                this.style.background = this.style.background === 'rgb(102, 126, 234)' ? '' : '#667eea';
+                this.style.color = this.style.color === 'white' ? '' : 'white';
+            });
+        });
+
+        // 示例連結點擊複製功能
+        document.querySelectorAll('.examples p').forEach(example => {
+            example.style.cursor = 'pointer';
+            example.title = '點擊複製到輸入框';
+
+            example.addEventListener('click', function() {
+                const url = this.textContent.split('：')[1];
+                if (url) {
+                    document.querySelector('input[name="q"]').value = url;
+                    showNotification('已複製範例連結到輸入框');
+                }
+            });
+        });
+    </script>
+</body>
+</html>

@@ -1,27 +1,30 @@
-FROM guysoft/uwsgi-nginx:python3.7
+FROM python:3.11-slim
 
-LABEL maintainer="maliaotw <maliaotw@gmail.com>"
-
-RUN pip install flask requests
-
-COPY ./app /app
+# 設置工作目錄
 WORKDIR /app
 
-# Make /app/* available to be imported by Python globally to better support several use cases like Alembic migrations.
+# 安裝系統依賴
+RUN apt-get update && apt-get install -y \
+    curl \
+    && rm -rf /var/lib/apt/lists/*
+
+# 安裝 UV
+RUN curl -LsSf https://astral.sh/uv/install.sh | sh
+ENV PATH="/root/.cargo/bin:$PATH"
+
+# 複製專案文件
+COPY pyproject.toml uv.lock ./
+COPY . .
+
+# 安裝 Python 依賴
+RUN uv sync --frozen
+
+# 設置環境變數
 ENV PYTHONPATH=/app
+ENV PORT=8080
 
-# Move the base entrypoint to reuse it
-RUN mv /entrypoint.sh /uwsgi-nginx-entrypoint.sh
-# Copy the entrypoint that will generate Nginx additional configs
-COPY entrypoint.sh /entrypoint.sh
-RUN chmod +x /entrypoint.sh
+# 暴露端口
+EXPOSE 8080
 
-ENTRYPOINT ["/entrypoint.sh"]
-
-# Run the start script provided by the parent image tiangolo/uwsgi-nginx.
-# It will check for an /app/prestart.sh script (e.g. for migrations)
-# And then will start Supervisor, which in turn will start Nginx and uWSGI
-
-EXPOSE 80
-
-CMD ["/start.sh"]
+# 啟動命令
+CMD ["uv", "run", "python", "main.py"]
